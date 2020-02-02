@@ -2,6 +2,9 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------*/
 
+import * as nls from 'vscode-nls';
+let localize = nls.loadMessageBundle();
+
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,9 +18,8 @@ import { ILaunchRequestArgs, IAttachRequestArgs, ICommonRequestArgs, ISetExpress
 import * as utils from './utils';
 import * as errors from './errors';
 
-import * as nls from 'vscode-nls';
 import { FinishedStartingUpEventArguments } from 'vscode-chrome-debug-core/lib/src/executionTimingsReporter';
-let localize = nls.loadMessageBundle();
+import { ChromeProvidedPortConnection } from './chromeProvidedPortConnection';
 
 // Keep in sync with sourceMapPathOverrides package.json default
 const DefaultWebSourceMapPathOverrides: ISourceMapPathOverrides = {
@@ -40,6 +42,7 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
     private _chromePID: number;
     private _userRequestedUrl: string;
     private _doesHostSupportLaunchUnelevatedProcessRequest: boolean;
+    protected _chromeConnection: ChromeProvidedPortConnection;
 
     public initialize(args: IExtendedInitializeRequestArguments): VSDebugProtocolCapabilities {
         this._overlayHelper = new utils.DebounceHelper(/*timeoutMs=*/200);
@@ -49,7 +52,7 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
         capabilities.supportsLogPoints = true;
 
         if (args.locale) {
-            localize = nls.config({ locale: args.locale })();
+            localize = nls.config({ locale: args.locale, bundleFormat: nls.BundleFormat.standalone })();
         }
 
         this._doesHostSupportLaunchUnelevatedProcessRequest = args.supportsLaunchUnelevatedProcessRequest || false;
@@ -85,7 +88,8 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
             }
 
             // Start with remote debugging enabled
-            const port = args.port || 9222;
+            // allow port = 0
+            let port = (args.port !== undefined) ? args.port : 9222;
             const chromeArgs: string[] = [];
             const chromeEnv: coreUtils.IStringDictionary<string> = args.env || null;
             const chromeWorkingDir: string = args.cwd || null;
@@ -97,6 +101,7 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
             // Also start with extra stuff disabled
             chromeArgs.push(...['--no-first-run', '--no-default-browser-check']);
             if (args.runtimeArgs) {
+                telemetryPropertyCollector.addTelemetryProperty('numberOfChromeCmdLineSwitchesBeingUsed', String(args.runtimeArgs.length));
                 chromeArgs.push(...args.runtimeArgs);
             }
 
@@ -111,6 +116,7 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
 
             if (args.userDataDir) {
                 chromeArgs.push('--user-data-dir=' + args.userDataDir);
+                this._chromeConnection.setUserDataDir(args.userDataDir);
             }
 
             if (args._clientOverlayPausedMessage) {
@@ -212,6 +218,8 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
             args.targetFilter = utils.getTargetFilter(args.targetTypes);
         }
 
+        args.smartStep = typeof args.smartStep === 'undefined' ? !this._isVSClient : args.smartStep;
+
         super.commonArgs(args);
     }
 
@@ -228,7 +236,9 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
                         configDisableNetworkCache :
                         true;
 
-                    this.chrome.Network.setCacheDisabled({ cacheDisabled });
+                    this.chrome.Network.setCacheDisabled({ cacheDisabled }).catch(() => {
+                        // Ignore failure
+                    });
                 });
 
             const versionInformationPromise = this.chrome.Browser.getVersion().then(
@@ -349,7 +359,7 @@ export class ChromeDebugAdapter extends CoreDebugAdapter {
             // Only kill Chrome if the 'disconnect' originated from vscode. If we previously terminated
             // due to Chrome shutting down, or devtools taking over, don't kill Chrome.
             if (coreUtils.getPlatform() === coreUtils.Platform.Windows && this._chromePID) {
-                await this.killChromeOnWindows(this._chromePID);
+                this.killChromeOnWindows(this._chromePID);
             } else if (this._chromeProc) {
                 logger.log('Killing Chrome process');
                 this._chromeProc.kill('SIGINT');

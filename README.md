@@ -31,11 +31,12 @@ A VS Code extension to debug your JavaScript code in the Google Chrome browser, 
 
 **Unsupported scenarios**
 * Debugging web workers
-* Any features that aren't script debugging.
+* Debugging Chrome extensions
+* Any features that aren't script debugging
 
 ## Getting Started
 1. [Install the extension](https://marketplace.visualstudio.com/items?itemName=msjsdiag.debugger-for-chrome)
-2. Restart VS Code and open the folder containing the project you want to work on.
+2. Open the folder containing the project you want to work on.
 
 ## Using the debugger
 
@@ -117,6 +118,12 @@ If you are using an attach config, make sure you close other running instances o
 
 For other troubleshooting tips for this error, [see below](#cannot-connect-to-the-target:-connect-ECONNREFUSED-127.0.0.1:9222).
 
+### Errors from chrome-error://chromewebdata
+
+If you see errors with a location like `chrome-error://chromewebdata/` in the error stack, these errors are not from the extension or from your app - they are usually a sign that Chrome was not able to load your app.
+
+When you see these errors, first check whether Chrome was able to load your app. Does Chrome say "This site can't be reached" or something similar? You must start your own server to run your app. Double-check that your server is running, and that the url and port are configured correctly.
+
 ### Other targets
 You can also theoretically attach to other targets that support the same Chrome Debugging protocol, such as Electron or Cordova. These aren't officially supported, but should work with basically the same steps. You can use a launch config by setting `"runtimeExecutable"` to a program or script to launch, or an attach config to attach to a process that's already running. If Code can't find the target, you can always verify that it is actually available by navigating to `http://localhost:<port>/json` in a browser. If you get a response with a bunch of JSON, and can find your target page in that JSON, then the target should be available to this extension.
 
@@ -139,6 +146,8 @@ See our wiki page for some configured example apps: [Examples](https://github.co
 * `smartStep`: Automatically steps over code that doesn't map to source files. Especially useful for debugging with async/await.
 * `disableNetworkCache`: If true, the network cache will be disabled.
 * `showAsyncStacks`: If true, callstacks across async calls (like `setTimeout`, `fetch`, resolved Promises, etc) will be shown.
+* `breakOnLoad`: Experimental. If true, the debug adapter will attempt to set breakpoints in scripts before they are loaded, so it can hit breakpoints at the beginnings of those scripts. Has a perf impact.
+* `breakOnLoadStrategy`: The strategy used for `breakOnLoad`. Options are "Instrument" or "Regex". Instrument "[tells] Chrome to pause as each script is loaded, resolving sourcemaps and setting breakpoints" Regex "[s]ets breakpoints optimistically in files with the same name as the file in which the breakpoint is set."
 
 ## Skip files / Blackboxing / Ignore files
 You can use the `skipFiles` property to ignore/blackbox specific files while debugging. For example, if you set `"skipFiles": ["jquery.js"]`, then you will skip any file named 'jquery.js' when stepping through your code. You also won't break on exceptions thrown from 'jquery.js'. This works the same as "blackboxing scripts" in Chrome DevTools.
@@ -187,11 +196,30 @@ Ionic and gulp-sourcemaps output a sourceRoot of `"/source/"` by default. If you
 }
 ```
 
+## Usage with remote VS Code extensions
+
+This extension can be used with the [VS Code Remote Extensions](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack) to debug an app in a local Chrome window. Here's an example workflow using the [Remote - SSH](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh) extension:
+
+- Connect to the SSH remote where your project is located
+- Launch the development server on the remote
+- Run the "Forward Port From Active Host" command to forward the port the server is listening on. For example, if your development server is listening on port 3000, forward port 3000 to the local machine.
+- Start your "chrome" launch config
+- Chrome should start on the local machine, accessing your app via the forwarded port
+- Debugging works as normally
+
+There are a couple caveats to this workflow:
+- Since the extension can't currently access the remote disk, sourcemaps can't be read from disk. If sourcemaps are inlined, they will still be used. If possible, they will be downloaded through your webserver.
+- In a local window, when resolving your script locations with webRoot/pathMapping, the extension does some searching for the correct script. Again, since the extension can't check the remote disk, the extension can't do this searching, so your webRoot/pathMapping must be exactly accurate to resolve the script location.
+
+If you have any other issues, please open an issue.
+
 ## Troubleshooting
 
 ### My breakpoints aren't hit. What's wrong?
 
-If your breakpoints aren't hit, it's most likely a sourcemapping issue or because you are having breakpoints in immediately executed code. If you for example have a breakpoint in a `render function` that runs on page load, sometimes our debugger might not be attached to Chrome before the code has been executed. This means that you will have to refresh the page in Chrome after we have attached from VS Code to hit your breakpoint. We are working in simplify this in with "break-on-load" breakpoints in https://github.com/Microsoft/vscode-chrome-debug/issues/445, which will make this timing issue transparent.
+If your breakpoints aren't hit, it's most likely a sourcemapping issue or because you are having breakpoints in immediately executed code. If you for example have a breakpoint in a `render function` that runs on page load, sometimes our debugger might not be attached to Chrome before the code has been executed. This means that you will have to refresh the page in Chrome after we have attached from VS Code to hit your breakpoint.
+
+Alternatively, we have an experimental "break-on-load" configuration option which will make this timing issue more transparent. It landed in https://github.com/microsoft/vscode-chrome-debug-core/pull/241.
 
 If you have a sourcemapping issue, please see https://github.com/Microsoft/vscode-chrome-debug#sourcemaps
 

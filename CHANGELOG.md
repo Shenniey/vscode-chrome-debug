@@ -1,3 +1,49 @@
+## 4.12.5
+* Don't respect the `"debug.chrome.useV3"` setting in a remote window, because that debugger doesn't support the remote scenario yet
+
+## 4.12.4
+* Register "useV3" setting officially
+
+## 4.12.3
+* Fix error when using restartFrame on Electron - [Microsoft/vscode#86411](https://github.com/microsoft/vscode/issues/86411)
+
+## 4.12.2
+* Fix error when setting value on property - [Microsoft/vscode-node-debug2#250](https://github.com/microsoft/vscode-node-debug2/issues/250)
+
+## 4.12.1
+* Hide `[[StableObjectId]]` variable - [Microsoft/vscode-chrome-debug-core#396](https://github.com/microsoft/vscode-chrome-debug-core/issues/396)
+* Hide `breakpointLocations` errors from console
+
+## 4.12.0
+* Show all possible breakpoint locations - [#934](https://github.com/microsoft/vscode-chrome-debug/issues/934)
+
+## 4.11.7
+* Support clearing the current color in console.log color format args - [microsoft/vscode#76550](https://github.com/microsoft/vscode#76550)
+
+## 4.11.5
+* Fix remote debugging issue - [#867](https://github.com/microsoft/vscode-chrome-debug/issues/867)
+
+## 4.11.4
+* Fix debugging in a remote window with chrome-debug as a UI extension - [#832](https://github.com/microsoft/vscode-chrome-debug/issues/832)
+
+## 4.11.3
+* Fix frames labeled as `smartStep` when they shouldn't be - [Microsoft/vscode#68127](https://github.com/microsoft/vscode/issues/68127)
+* Fix slow attach when files don't exist on disk - [Microsoft/vscode#69118](https://github.com/microsoft/vscode/issues/69118)
+
+## 4.11.2
+* Fix disabling smartStep - [Microsoft/vscode#68464](https://github.com/microsoft/vscode/issues/68464)
+* Fix smartStep frames sometimes not grayed out - [Microsoft/vscode#65025](https://github.com/microsoft/vscode/issues/65025)
+* Various minor bug fixes
+
+## 4.11.1
+* Enable `smartStep` by default - [Microsoft/vscode#62965](https://github.com/microsoft/vscode/issues/62965)
+* Enable `showAsyncStacks` by default, finally
+* Fix some frames incorrectly labelled as "skipped by smartStep"
+
+## 4.11.0
+* Support %c styling in console.log - thanks to [@rdegelo](https://github.com/rdegelo) for [PR #367](https://github.com/Microsoft/vscode-chrome-debug-core/pull/367) and [PR #374](https://github.com/Microsoft/vscode-chrome-debug-core/pull/374).
+* Fixes for breakOnLoad edge cases
+
 ## 4.10.2
 * Only show callstack context menu on stack frames - [Microsoft/vscode#19180](https://github.com/microsoft/vscode/issues/19180)
 * Fix missing breakpoints on first line of script in Chrome 69 - [Microsoft/vscode-chrome-debug-core#352](https://github.com/microsoft/vscode-chrome-debug-core/issues/352)
